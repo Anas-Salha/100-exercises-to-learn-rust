@@ -88,5 +88,8 @@ mod tests {
         let ticket2 = store.get(id2).unwrap();
 
         assert_ne!(id1, id2);
+
+        let no_ticket = store.get(crate::TicketId(999));
+        assert_eq!(no_ticket, None);
     }
 }
