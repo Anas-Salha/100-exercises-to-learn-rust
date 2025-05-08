@@ -1,6 +1,8 @@
+use core::panic;
+
 use ticket_fields::test_helpers::{ticket_description, ticket_title};
 use versioned_patch::data::{Status, TicketDraft, TicketPatch};
-use versioned_patch::launch;
+use versioned_patch::{launch, PatchRejectedError};
 
 #[test]
 fn works() {
@@ -18,12 +20,39 @@ fn works() {
     assert_eq!(ticket.description, draft.description);
 
     let patch = TicketPatch {
+        version: 0,
+        id: ticket_id,
+        title: None,
+        description: None,
+        status: Some(Status::ToDo),
+    };
+
+    let _ = client.update(patch).unwrap();
+
+    let ticket = client.get(ticket_id).unwrap().unwrap();
+    assert_eq!(ticket.id, ticket_id);
+    assert_eq!(ticket.status, Status::ToDo);
+
+    let patch2 = TicketPatch {
+        version: 1,
         id: ticket_id,
         title: None,
         description: None,
         status: Some(Status::InProgress),
     };
-    client.update(patch).unwrap();
+
+    let _ = client.update(patch2).unwrap();
+
+    let patch3 = TicketPatch {
+        version: 1,
+        id: ticket_id,
+        title: None,
+        description: None,
+        status: Some(Status::Done),
+    };
+
+    let result = client.update(patch3);
+    assert!(matches!(result, Err(PatchRejectedError)));
 
     let ticket = client.get(ticket_id).unwrap().unwrap();
     assert_eq!(ticket.id, ticket_id);
