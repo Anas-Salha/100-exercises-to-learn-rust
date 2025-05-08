@@ -1,6 +1,6 @@
-use patch::data::{Status, TicketDraft, TicketPatch};
-use patch::launch;
 use ticket_fields::test_helpers::{ticket_description, ticket_title};
+use versioned_patch::data::{Status, TicketDraft, TicketPatch};
+use versioned_patch::launch;
 
 #[test]
 fn works() {
