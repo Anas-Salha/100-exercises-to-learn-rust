@@ -22,6 +22,7 @@ impl TicketStore {
         let id = TicketId(self.counter);
         self.counter += 1;
         let ticket = Ticket {
+            version: 0,
             id,
             title: ticket.title,
             description: ticket.description,

@@ -35,21 +35,27 @@ impl TicketStoreClient {
         Ok(response_receiver.recv().unwrap())
     }
 
-    pub fn update(&self, ticket_patch: TicketPatch) -> Result<(), OverloadedError> {
+    pub fn update(&self, ticket_patch: TicketPatch) -> Result<(), PatchRejectedError> {
         let (response_sender, response_receiver) = sync_channel(1);
-        self.sender
+        let _ = self
+            .sender
             .try_send(Command::Update {
                 patch: ticket_patch,
                 response_channel: response_sender,
             })
-            .map_err(|_| OverloadedError)?;
-        Ok(response_receiver.recv().unwrap())
+            .map_err(|_| OverloadedError);
+
+        response_receiver.recv().unwrap()
     }
 }
 
 #[derive(Debug, thiserror::Error)]
 #[error("The store is overloaded")]
 pub struct OverloadedError;
+
+#[derive(Debug, thiserror::Error)]
+#[error("Patch was rejected due to outdated version number")]
+pub struct PatchRejectedError;
 
 pub fn launch(capacity: usize) -> TicketStoreClient {
     let (sender, receiver) = sync_channel(capacity);
@@ -68,7 +74,7 @@ enum Command {
     },
     Update {
         patch: TicketPatch,
-        response_channel: SyncSender<()>,
+        response_channel: SyncSender<Result<(), PatchRejectedError>>,
     },
 }
 
@@ -96,19 +102,24 @@ pub fn server(receiver: Receiver<Command>) {
             }) => {
                 let ticket = store.get_mut(patch.id).unwrap();
 
-                if let Some(value) = patch.title {
-                    ticket.title = value;
-                }
+                if patch.version == ticket.version {
+                    if let Some(value) = patch.title {
+                        ticket.title = value;
+                    }
 
-                if let Some(value) = patch.description {
-                    ticket.description = value;
-                }
+                    if let Some(value) = patch.description {
+                        ticket.description = value;
+                    }
 
-                if let Some(value) = patch.status {
-                    ticket.status = value;
-                }
+                    if let Some(value) = patch.status {
+                        ticket.status = value;
+                    }
 
-                let _ = response_channel.send(());
+                    ticket.version += 1;
+                    let _ = response_channel.send(Ok(()));
+                } else {
+                    let _ = response_channel.send(Err(PatchRejectedError));
+                }
             }
             Err(_) => {
                 // There are no more senders, so we can safely break

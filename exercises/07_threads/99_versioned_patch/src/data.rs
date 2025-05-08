@@ -3,6 +3,7 @@ use ticket_fields::{TicketDescription, TicketTitle};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ticket {
+    pub version: u64,
     pub id: TicketId,
     pub title: TicketTitle,
     pub description: TicketDescription,
@@ -17,6 +18,7 @@ pub struct TicketDraft {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TicketPatch {
+    pub version: u64,
     pub id: TicketId,
     pub title: Option<TicketTitle>,
     pub description: Option<TicketDescription>,
